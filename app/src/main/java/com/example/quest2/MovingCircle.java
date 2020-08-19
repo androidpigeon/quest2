@@ -1,82 +1,78 @@
 package com.example.quest2;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.res.TypedArray;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PointF;
 import android.util.AttributeSet;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ImageView;
 
-import androidx.constraintlayout.widget.ConstraintLayout;
+public class MovingCircle extends View {
 
-public class MovingCircle extends ConstraintLayout {
-
-    float yOffset;
+    private Paint paint;
+    private float sR = 100;
+    private boolean smallTouched = false;
+    private PointF screanCenter;
+    private PointF sLocation;
 
     public MovingCircle(Context context) {
         super(context);
-        init(context, null);
+        init();
     }
 
     public MovingCircle(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(context, attrs);
+        init();
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    public void init(Context context, AttributeSet attrs) {
-        LayoutInflater inflater = LayoutInflater.from(context);
-        inflater.inflate(R.layout.canvacircle_layout, this);
+    public void init() {
+        setUpPaint();
+        screanCenter = new PointF(getResources().getDisplayMetrics().widthPixels / 2f, getResources().getDisplayMetrics().heightPixels / 2f);
+        sLocation = new PointF(screanCenter.x, screanCenter.y);
+    }
 
-        final ImageView ivSmall = findViewById(R.id.ivSmall);
-        final ImageView ivBig = findViewById(R.id.ivBig);
+    private void setUpPaint() {
+        paint = new Paint();
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setColor(Color.BLACK);
+        paint.setStrokeWidth(2);
+    }
 
-        yOffset = getToolBarHeight() + getStatusBarHeight();
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        canvas.drawCircle(screanCenter.x, screanCenter.y, screanCenter.x, paint);
+        canvas.drawCircle(sLocation.x, sLocation.y, 100, paint);
+    }
 
-        ivSmall.setOnTouchListener(new View.OnTouchListener() {
-            float bX, bY, bR, sR;
-            double distSq;
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
 
-            @Override
-            public boolean onTouch(View view, MotionEvent event) {
-                int[] coordinates = new int[2];
-                ivBig.getLocationOnScreen(coordinates);
-
-                bX = coordinates[0] + (ivBig.getWidth() / 2f);
-                bY = coordinates[1] + (ivBig.getHeight() / 2f);
-                bR = ivBig.getWidth() / 2f;
-                sR = view.getWidth() / 2f;
-
-                if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
-                    distSq = Math.sqrt(((bX - event.getRawX()) * (bX - event.getRawX()))
-                            + ((bY - event.getRawY()) * (bY - event.getRawY())));
-
-                    if ((distSq + sR) < bR) {
-                        view.setX(event.getRawX() - sR);
-                        view.setY(event.getRawY() - yOffset - sR);
-                    }
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                isTouched(event.getX(), event.getY());
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (smallTouched) {
+                    double distSq = Math.sqrt(((screanCenter.x - event.getX()) * (screanCenter.x - event.getX()))
+                            + ((screanCenter.y - event.getY()) * (screanCenter.y - event.getY())));
+                    if ((distSq + sR) < screanCenter.x)
+                        sLocation = new PointF(event.getX(), event.getY());
                 }
-                return true;
-            }
-        });
-    }
-
-    public int getToolBarHeight() {
-        int[] attrs = new int[]{R.attr.actionBarSize};
-        TypedArray ta = getContext().obtainStyledAttributes(attrs);
-        int toolBarHeight = ta.getDimensionPixelSize(0, -1);
-        ta.recycle();
-        return toolBarHeight;
-    }
-
-    public int getStatusBarHeight() {
-        int result = 0;
-        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            result = getResources().getDimensionPixelSize(resourceId);
+                invalidate();
+                break;
+            case MotionEvent.ACTION_UP:
+                smallTouched = false;
+                break;
         }
-        return result;
+        return true;
+    }
+
+    private void isTouched(float eX, float eY) {
+        if (Math.sqrt(((sLocation.x - eX) * (sLocation.x - eX))
+                + ((sLocation.y - eY) * (sLocation.y - eY))) < sR)
+            smallTouched = true;
     }
 }
